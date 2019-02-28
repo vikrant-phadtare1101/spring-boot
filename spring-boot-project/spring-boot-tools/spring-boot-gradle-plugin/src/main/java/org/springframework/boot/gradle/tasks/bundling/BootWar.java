@@ -51,8 +51,8 @@ public class BootWar extends War implements BootArchive {
 	public BootWar() {
 		getWebInf().into("lib-provided",
 				(copySpec) -> copySpec.from(
-						(Callable<Iterable<File>>) () -> this.providedClasspath == null
-								? Collections.emptyList() : this.providedClasspath));
+						(Callable<Iterable<File>>) () -> (this.providedClasspath != null
+								? this.providedClasspath : Collections.emptyList())));
 	}
 
 	@Override
@@ -68,6 +68,13 @@ public class BootWar extends War implements BootArchive {
 
 	@Override
 	public String getMainClassName() {
+		if (this.mainClassName == null) {
+			String manifestStartClass = (String) getManifest().getAttributes()
+					.get("Start-Class");
+			if (manifestStartClass != null) {
+				setMainClassName(manifestStartClass);
+			}
+		}
 		return this.mainClassName;
 	}
 
@@ -104,7 +111,6 @@ public class BootWar extends War implements BootArchive {
 	/**
 	 * Returns the provided classpath, the contents of which will be included in the
 	 * {@code WEB-INF/lib-provided} directory of the war.
-	 *
 	 * @return the provided classpath
 	 */
 	@Optional
@@ -116,13 +122,12 @@ public class BootWar extends War implements BootArchive {
 	 * Adds files to the provided classpath to include in the {@code WEB-INF/lib-provided}
 	 * directory of the war. The given {@code classpath} are evaluated as per
 	 * {@link Project#files(Object...)}.
-	 *
 	 * @param classpath the additions to the classpath
 	 */
 	public void providedClasspath(Object... classpath) {
 		FileCollection existingClasspath = this.providedClasspath;
 		this.providedClasspath = getProject().files(
-				existingClasspath == null ? Collections.emptyList() : existingClasspath,
+				existingClasspath != null ? existingClasspath : Collections.emptyList(),
 				classpath);
 	}
 
@@ -142,7 +147,6 @@ public class BootWar extends War implements BootArchive {
 	 * <p>
 	 * By default, any file in {@code WEB-INF/lib/} or {@code WEB-INF/lib-provided/} is
 	 * stored and all other files are deflated.
-	 *
 	 * @param details the details
 	 * @return the compression to use
 	 */

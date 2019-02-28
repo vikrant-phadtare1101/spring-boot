@@ -155,14 +155,15 @@ in the '`Spring Boot features`' section for more information.
 Not all Spring applications have to be web applications (or web services). If you want to
 execute some code in a `main` method but also bootstrap a Spring application to set up
 the infrastructure to use, you can use the `SpringApplication` features of Spring
-Boot. A `SpringApplication` changes its `ApplicationContext` class, depending on whether it
-thinks it needs a web application or not. The first thing you can do to help it is to
-leave the servlet API dependencies off the classpath. If you cannot do that (for example, you
-run two applications from the same code base) then you can explicitly call
-`setWebEnvironment(false)` on your `SpringApplication` instance or set the
-`applicationContextClass` property (through the Java API or with external properties).
-Application code that you want to run as your business logic can be implemented as a
-`CommandLineRunner` and dropped into the context as a `@Bean` definition.
+Boot. A `SpringApplication` changes its `ApplicationContext` class, depending on whether
+it thinks it needs a web application or not. The first thing you can do to help it is to
+leave server-related dependencies (e.g. servlet API) off the classpath. If you cannot do
+that (for example, you run two applications from the same code base) then you can
+explicitly call `setWebApplicationType(WebApplicationType.NONE)` on your
+`SpringApplication` instance or set the `applicationContextClass` property (through the
+Java API or with external properties). Application code that you want to run as your
+business logic can be implemented as a `CommandLineRunner` and dropped into the context as
+a `@Bean` definition.
 
 
 
@@ -275,15 +276,12 @@ configuration by setting properties in `+spring.main.*+`. For example, in
 
 [source,properties,indent=0,subs="verbatim,quotes,attributes"]
 ----
-	spring.main.web-environment=false
+	spring.main.web-application-type=none
 	spring.main.banner-mode=off
 ----
 
-Then the Spring Boot banner is not printed on startup, and the application is
-not a web application.
-
-NOTE: The preceding example also demonstrates how flexible binding allows the use of
-underscores (`_`) as well as dashes (`-`) in property names.
+Then the Spring Boot banner is not printed on startup, and the application is not starting
+an embedded web server.
 
 Properties defined in external configuration override the values specified with the Java
 API, with the notable exception of the sources used to create the `ApplicationContext`.
@@ -508,18 +506,17 @@ configure the embedded server. This section answers those questions.
 
 [[howto-use-another-web-server]]
 === Use Another Web Server
-Many Spring Boot starters include default embedded containers. `spring-boot-starter-web`
-includes Tomcat by including `spring-boot-starter-tomcat`, but you can use
-`spring-boot-starter-jetty` or  `spring-boot-starter-undertow` instead.
-`spring-boot-starter-webflux` includes  Reactor Netty by including
-`spring-boot-starter-reactor-netty`, but you can use `spring-boot-starter-tomcat`,
+Many Spring Boot starters include default embedded containers.
+
+* For servlet stack applications, the `spring-boot-starter-web` includes Tomcat by including
+`spring-boot-starter-tomcat`, but you can use `spring-boot-starter-jetty` or
+`spring-boot-starter-undertow` instead.
+* For reactive stack applications, the `spring-boot-starter-webflux` includes  Reactor Netty
+by including `spring-boot-starter-reactor-netty`, but you can use `spring-boot-starter-tomcat`,
 `spring-boot-starter-jetty`, or `spring-boot-starter-undertow` instead.
 
-NOTE: Many starters support only Spring MVC, so they transitively bring
-`spring-boot-starter-web` into your application classpath.
-
-If you need to use a different HTTP server, you need to exclude the default dependencies
-and include the one you need. Spring Boot provides separate starters for
+When switching to a different HTTP server, you need to exclude the default dependencies
+in addition to including the one you need. Spring Boot provides separate starters for
 HTTP servers to help make this process as easy as possible.
 
 The following Maven example shows how to exclude Tomcat and include Jetty for Spring MVC:
@@ -568,84 +565,16 @@ server.
 
 
 
-[[howto-configure-jetty]]
-=== Configure Jetty
-Generally, you can follow the advice from
-"`<<howto-discover-build-in-options-for-external-properties>>`" about
-`@ConfigurationProperties` (`ServerProperties` is the main one here). However, you should
-also look at
-{dc-spring-boot}/web/server/WebServerFactoryCustomizer.html[`WebServerFactoryCustomizer`].
-The Jetty APIs are quite rich, so, once you have access to the
-`JettyServletWebServerFactory`, you can modify it in a number of ways. Alternatively, if
-you need more control and customization, you can add your own
-`JettyServletWebServerFactory`.
+[[howto-disable-web-server]]
+=== Disabling the Web Server
+If your classpath contains the necessary bits to start a web server, Spring Boot will
+automatically start it. To disable this behaviour configure the `WebApplicationType` in
+your `application.properties`, as shown in the following example:
 
-
-
-[[howto-add-a-servlet-filter-or-listener]]
-=== Add a Servlet, Filter, or Listener to an Application
-There are two ways to add `Servlet`, `Filter`, `ServletContextListener`, and the other
-listeners supported by the Servlet spec to your application:
-
-* <<howto-add-a-servlet-filter-or-listener-as-spring-bean>>
-* <<howto-add-a-servlet-filter-or-listener-using-scanning>>
-
-
-
-[[howto-add-a-servlet-filter-or-listener-as-spring-bean]]
-==== Add a Servlet, Filter, or Listener by Using a Spring Bean
-To add a `Servlet`, `Filter`, or Servlet `*Listener` by using a Spring bean, you must
-provide a `@Bean` definition for it. Doing so can be very useful when you want to inject
-configuration or dependencies. However, you must be very careful that they do not cause
-eager initialization of too many other beans, because they have to be installed in the
-container very early in the application lifecycle. (For example, it is not a good idea to
-have them depend on your `DataSource` or JPA configuration.) You can work around such
-restrictions by initializing the beans lazily when first used instead of on
-initialization.
-
-In the case of `Filters` and `Servlets`, you can also add mappings and init parameters by
-adding a `FilterRegistrationBean` or a `ServletRegistrationBean` instead of or in
-addition to the underlying component.
-
-[NOTE]
-====
-If no `dispatcherType` is specified on a filter registration, `REQUEST` is used. This
-aligns with the Servlet Specification's default dispatcher type.
-====
-
-Like any other Spring bean, you can define the order of Servlet filter beans; please
-make sure to check the
-"`<<spring-boot-features.adoc#boot-features-embedded-container-servlets-filters-listeners-beans>>`"
-section.
-
-
-
-[[howto-disable-registration-of-a-servlet-or-filter]]
-===== Disable Registration of a Servlet or Filter
-As <<howto-add-a-servlet-filter-or-listener-as-spring-bean,described earlier>>, any
-`Servlet` or `Filter` beans are registered with the servlet container automatically. To
-disable registration of a particular `Filter` or `Servlet` bean, create a registration
-bean for it and mark it as disabled, as shown in the following example:
-
-[source,java,indent=0,subs="verbatim,quotes,attributes"]
+[source,properties,indent=0]
 ----
-	@Bean
-	public FilterRegistrationBean registration(MyFilter filter) {
-		FilterRegistrationBean registration = new FilterRegistrationBean(filter);
-		registration.setEnabled(false);
-		return registration;
-	}
+	spring.main.web-application-type=none
 ----
-
-
-
-[[howto-add-a-servlet-filter-or-listener-using-scanning]]
-==== Add Servlets, Filters, and Listeners by Using Classpath Scanning
-`@WebServlet`, `@WebFilter`, and `@WebListener` annotated classes can be automatically
-registered with an embedded servlet container by annotating a `@Configuration` class
-with `@ServletComponentScan` and specifying the package(s) containing the components
-that you want to register. By default, `@ServletComponentScan` scans from the package
-of the annotated class.
 
 
 
@@ -709,6 +638,32 @@ to inject the port in a regular application. As we just saw, the value is set on
 the container has been initialized. Contrary to a test, application code callbacks are
 processed early (before the value is actually available).
 ====
+
+
+
+[[how-to-enable-http-response-compression]]
+=== Enable HTTP Response Compression
+HTTP response compression is supported by Jetty, Tomcat, and Undertow. It can be enabled
+in `application.properties`, as follows:
+
+[source,properties,indent=0,subs="verbatim,quotes,attributes"]
+----
+	server.compression.enabled=true
+----
+
+By default, responses must be at least 2048 bytes in length for compression to be
+performed. You can configure this behavior by setting the
+`server.compression.min-response-size` property.
+
+By default, responses are compressed only if their content type is one of the
+following:
+
+* `text/html`
+* `text/xml`
+* `text/plain`
+* `text/css`
+
+You can configure this behavior by setting the `server.compression.mime-types` property.
 
 
 
@@ -793,6 +748,143 @@ This error is not fatal, and the application still starts with HTTP/1.1 SSL supp
 Running your application with Tomcat 9.0.x and JDK9 does not require any native library to
 be installed. To use Tomcat 9, you can override the `tomcat.version` build property with
 the version of your choice.
+
+
+
+[[howto-configure-webserver]]
+=== Configure the Web Server
+
+Generally, you should first consider using one of the many available configuration keys
+and customize your web server by adding new entries in your `application.properties` (or
+`application.yml`, or environment, etc. see
+"`<<howto-discover-build-in-options-for-external-properties>>`"). The `server.{asterisk}`
+namespace is quite useful here, and it includes namespaces like `server.tomcat.{asterisk}`,
+`server.jetty.{asterisk}` and others, for server-specific features.
+See the list of <<common-application-properties>>.
+
+The previous sections covered already many common use cases, such as compression, SSL
+or HTTP/2. However, if a configuration key doesn't exist for your use case, you should
+then look at
+{dc-spring-boot}/web/server/WebServerFactoryCustomizer.html[`WebServerFactoryCustomizer`].
+You can declare such a component and get access to the server factory relevant to your
+choice: you should select the variant for the chosen Server (Tomcat, Jetty, Reactor Netty,
+Undertow) and the chosen web stack (Servlet or Reactive).
+
+The example below is for Tomcat with the `spring-boot-starter-web` (Servlet stack):
+
+[source,java,indent=0,subs="verbatim,quotes,attributes"]
+----
+	@Component
+	public class MyTomcatWebServerCustomizer
+			implements WebServerFactoryCustomizer<TomcatServletWebServerFactory> {
+
+		@Override
+		public void customize(TomcatServletWebServerFactory factory) {
+			// customize the factory here
+		}
+	}
+----
+
+In addition Spring Boot provides:
+
+[[howto-configure-webserver-customizers]]
+[cols="1,2,2", options="header"]
+|===
+| Server | Servlet stack | Reactive stack
+
+| Tomcat
+| `TomcatServletWebServerFactory`
+| `TomcatReactiveWebServerFactory`
+
+| Jetty
+| `JettyServletWebServerFactory`
+| `JettyReactiveWebServerFactory`
+
+| Undertow
+| `UndertowServletWebServerFactory`
+| `UndertowReactiveWebServerFactory`
+
+| Reactor
+| N/A
+| `NettyReactiveWebServerFactory`
+
+|===
+
+Once you've got access to a `WebServerFactory`, you can often add customizers to it to
+configure specific parts, like connectors, server resources, or the server itself - all
+using server-specific APIs.
+
+As a last resort, you can also declare your own `WebServerFactory` component, which will
+override the one provided by Spring Boot. In this case, you can't rely on configuration
+properties in the `server` namespace anymore.
+
+
+
+[[howto-add-a-servlet-filter-or-listener]]
+=== Add a Servlet, Filter, or Listener to a Application
+In a servlet stack application, i.e. with the `spring-boot-starter-web`, there are two
+ways to add `Servlet`, `Filter`, `ServletContextListener`, and the other listeners
+supported by the Servlet API to your application:
+
+* <<howto-add-a-servlet-filter-or-listener-as-spring-bean>>
+* <<howto-add-a-servlet-filter-or-listener-using-scanning>>
+
+
+
+[[howto-add-a-servlet-filter-or-listener-as-spring-bean]]
+==== Add a Servlet, Filter, or Listener by Using a Spring Bean
+To add a `Servlet`, `Filter`, or Servlet `*Listener` by using a Spring bean, you must
+provide a `@Bean` definition for it. Doing so can be very useful when you want to inject
+configuration or dependencies. However, you must be very careful that they do not cause
+eager initialization of too many other beans, because they have to be installed in the
+container very early in the application lifecycle. (For example, it is not a good idea to
+have them depend on your `DataSource` or JPA configuration.) You can work around such
+restrictions by initializing the beans lazily when first used instead of on
+initialization.
+
+In the case of `Filters` and `Servlets`, you can also add mappings and init parameters by
+adding a `FilterRegistrationBean` or a `ServletRegistrationBean` instead of or in
+addition to the underlying component.
+
+[NOTE]
+====
+If no `dispatcherType` is specified on a filter registration, `REQUEST` is used. This
+aligns with the Servlet Specification's default dispatcher type.
+====
+
+Like any other Spring bean, you can define the order of Servlet filter beans; please
+make sure to check the
+"`<<spring-boot-features.adoc#boot-features-embedded-container-servlets-filters-listeners-beans>>`"
+section.
+
+
+
+[[howto-disable-registration-of-a-servlet-or-filter]]
+===== Disable Registration of a Servlet or Filter
+As <<howto-add-a-servlet-filter-or-listener-as-spring-bean,described earlier>>, any
+`Servlet` or `Filter` beans are registered with the servlet container automatically. To
+disable registration of a particular `Filter` or `Servlet` bean, create a registration
+bean for it and mark it as disabled, as shown in the following example:
+
+[source,java,indent=0,subs="verbatim,quotes,attributes"]
+----
+	@Bean
+	public FilterRegistrationBean registration(MyFilter filter) {
+		FilterRegistrationBean registration = new FilterRegistrationBean(filter);
+		registration.setEnabled(false);
+		return registration;
+	}
+----
+
+
+
+[[howto-add-a-servlet-filter-or-listener-using-scanning]]
+==== Add Servlets, Filters, and Listeners by Using Classpath Scanning
+`@WebServlet`, `@WebFilter`, and `@WebListener` annotated classes can be automatically
+registered with an embedded servlet container by annotating a `@Configuration` class
+with `@ServletComponentScan` and specifying the package(s) containing the components
+that you want to register. By default, `@ServletComponentScan` scans from the package
+of the annotated class.
 
 
 
@@ -896,19 +988,6 @@ adding a new valve instance in a `TomcatServletWebServerFactory` bean.
 
 
 
-[[howto-configure-tomcat]]
-=== Configure Tomcat
-Generally, you can follow the advice from
-"`<<howto-discover-build-in-options-for-external-properties>>`" about
-`@ConfigurationProperties` (`ServerProperties` is the main one here). However, you should
-also look at `WebServerFactoryCustomizer` and various Tomcat-specific
-`+*Customizers+` that you can add. The Tomcat APIs are quite rich. Consequently, once you
-have access to the `TomcatServletWebServerFactory`, you can modify it in a number of ways.
-Alternatively, if you need more control and customization, you can add your own
-`TomcatServletWebServerFactory`.
-
-
-
 [[howto-enable-multiple-connectors-in-tomcat]]
 === Enable Multiple Connectors with Tomcat
 You can add an `org.apache.catalina.connector.Connector` to the
@@ -974,19 +1053,6 @@ include::{code-examples}/context/embedded/TomcatLegacyCookieProcessorExample.jav
 
 
 
-[[howto-configure-undertow]]
-=== Configure Undertow
-Generally you can follow the advice from
-"`<<howto-discover-build-in-options-for-external-properties>>`" about
-`@ConfigurationProperties` (`ServerProperties` and `ServerProperties.Undertow` are the
-main ones here). However, you should also look at `WebServerFactoryCustomizer`.
-Once you have access to the `UndertowServletWebServerFactory`, you can use an
-`UndertowBuilderCustomizer` to modify Undertow's configuration to meet your needs.
-Alternatively, if you need more control and customization, you can add your own
-`UndertowServletWebServerFactory`.
-
-
-
 [[howto-enable-multiple-listeners-in-undertow]]
 === Enable Multiple Listeners with Undertow
 Add an `UndertowBuilderCustomizer` to the `UndertowServletWebServerFactory` and
@@ -1029,32 +1095,6 @@ The bean shown in the preceding example registers any `@ServerEndpoint` annotate
 with the underlying WebSocket container. When deployed to a standalone servlet container,
 this role is performed by a servlet container initializer, and the
 `ServerEndpointExporter` bean is not required.
-
-
-
-[[how-to-enable-http-response-compression]]
-=== Enable HTTP Response Compression
-HTTP response compression is supported by Jetty, Tomcat, and Undertow. It can be enabled
-in `application.properties`, as follows:
-
-[source,properties,indent=0,subs="verbatim,quotes,attributes"]
-----
-	server.compression.enabled=true
-----
-
-By default, responses must be at least 2048 bytes in length for compression to be
-performed. You can configure this behavior by setting the
-`server.compression.min-response-size` property.
-
-By default, responses are compressed only if their content type is one of the
-following:
-
-* `text/html`
-* `text/xml`
-* `text/plain`
-* `text/css`
-
-You can configure this behavior by setting the `server.compression.mime-types` property.
 
 
 
@@ -1340,6 +1380,30 @@ For more detail, see the following sections:
 * {sc-spring-boot-autoconfigure}/thymeleaf/ThymeleafAutoConfiguration.{sc-ext}[`ThymeleafAutoConfiguration`]
 * {sc-spring-boot-autoconfigure}/freemarker/FreeMarkerAutoConfiguration.{sc-ext}[`FreeMarkerAutoConfiguration`]
 * {sc-spring-boot-autoconfigure}/groovy/template/GroovyTemplateAutoConfiguration.{sc-ext}[`GroovyTemplateAutoConfiguration`]
+
+
+
+[[howto-jersey]]
+== Jersey
+
+
+
+[[howto-jersey-spring-security]]
+=== Secure Jersey endpoints with Spring Security
+Spring Security can be used to secure a Jersey-based web application in much the same
+way as it can be used to secure a Spring MVC-based web application. However, if you want
+to use Spring Security's method-level security with Jersey, you must configure Jersey to
+use `setStatus(int)` rather `sendError(int)`. This prevents Jersey from committing the
+response before Spring Security has had an opportunity to report an authentication or
+authorization failure to the client.
+
+The `jersey.config.server.response.setStatusOverSendError` property must be set to `true`
+on the application's `ResourceConfig` bean, as shown in the following example:
+
+[source,java,indent=0]
+----
+include::{code-examples}/jersey/JerseySetStatusOverSendErrorExample.java[tag=resource-config]
+----
 
 
 
@@ -1929,10 +1993,9 @@ as shown in the following example:
 
 [[howto-use-traditional-persistence-xml]]
 === Use a Traditional `persistence.xml` File
-Spring does not require the use of XML to configure the JPA provider, and Spring Boot
-assumes you want to take advantage of that feature. If you prefer to use
-`persistence.xml`, you need to define your own `@Bean` of type
-`LocalEntityManagerFactoryBean` (with an ID of '`entityManagerFactory`') and set the
+Spring Boot will not search for or use a `META-INF/persistence.xml` by default. If you
+prefer to use a traditional `persistence.xml`, you need to define your own `@Bean` of
+type `LocalEntityManagerFactoryBean` (with an ID of '`entityManagerFactory`') and set the
 persistence unit name there.
 
 See
@@ -2068,9 +2131,17 @@ is the value of `spring.datasource.platform`. This allows you to switch to
 database-specific scripts if necessary. For example, you might choose to set it to the
 vendor name of the database (`hsqldb`, `h2`, `oracle`, `mysql`, `postgresql`, and so on).
 
-Spring Boot automatically creates the schema of an embedded `DataSource`. This behavior
-can be customized by using the `spring.datasource.initialization-mode` property (and it
-can also be `always` or `never`).
+[NOTE]
+====
+Spring Boot automatically creates the schema of an embedded `DataSource`. This behaviour
+can be customized by using the `spring.datasource.initialization-mode` property. For
+instance, if you want to always initialize the `DataSource` regardless of its type:
+
+[indent=0,subs="verbatim,quotes,attributes"]
+----
+	spring.datasource.initialization-mode=always
+----
+====
 
 By default, Spring Boot enables the fail-fast feature of the Spring JDBC initializer. This
 means that, if the scripts cause exceptions, the application fails to start. You can tune
@@ -2319,6 +2390,22 @@ of how to register handlers in the servlet container.
 
 
 
+[[howto-sanitize-sensible-values]]
+=== Sanitize sensible values
+Information returned by the `env` and `configprops` endpoints can be somewhat sensitive
+so keys matching a certain pattern are sanitized by default (i.e. their values are
+replaced by `******`).
+
+Spring Boot uses sensible defaults for such keys: for instance, any key ending with the
+word "password", "secret", "key" or "token" is sanitized. It is also possible to use a
+regular expression instead, such as `*credentials.*` to sanitize any key that holds the
+word `credentials` as part of the key.
+
+The patterns to use can be customized using the `management.endpoint.env.keys-to-sanitize`
+and `management.endpoint.configprops.keys-to-sanitize` respectively.
+
+
+
 [[howto-security]]
 == Security
 
@@ -2335,8 +2422,8 @@ If you define a `@Configuration` with a `WebSecurityConfigurerAdapter` in your a
 it switches off the default webapp security settings in Spring Boot.
 
 
-[[howto-change-the-authenticationmanager-and-add-user-accounts]]
-=== Change the AuthenticationManager and Add User Accounts
+[[howto-change-the-user-details-service-and-add-user-accounts]]
+=== Change the UserDetailsService and Add User Accounts
 If you provide a `@Bean` of type `AuthenticationManager`, `AuthenticationProvider`,
 or `UserDetailsService`, the default `@Bean` for `InMemoryUserDetailsManager` is not
 created, so you have the full feature set of Spring Security available (such as
@@ -2557,7 +2644,7 @@ plugin, as shown in the following example:
 [source,groovy,indent=0]
 ----
 	plugins {
-		id "com.gorylenko.gradle-git-properties" version "1.4.17"
+		id "com.gorylenko.gradle-git-properties" version "1.4.21"
 	}
 ----
 
@@ -2568,7 +2655,6 @@ to be controlled by Jackson's date serialization configuration settings.
 
 
 
-[[howto-customize-dependency-versions-with-maven]]
 [[howto-customize-dependency-versions]]
 === Customize Dependency Versions
 If you use a Maven build that inherits directly or indirectly from
@@ -2594,7 +2680,8 @@ the artifact yourself instead of overriding the property.
 WARNING: Each Spring Boot release is designed and tested against this specific set of
 third-party dependencies. Overriding versions may cause compatibility issues.
 
-
+To override dependency versions in Gradle, see {spring-boot-gradle-plugin-reference}/#managing-dependencies-customizing[this section]
+of the Gradle plugin's documentation.
 
 [[howto-create-an-executable-jar-with-maven]]
 === Create an Executable JAR with Maven
@@ -2841,6 +2928,10 @@ This section answers common questions about traditional deployment.
 [[howto-create-a-deployable-war-file]]
 === Create a Deployable War File
 
+WARNING: Because Spring WebFlux does not strictly depend on the Servlet API and
+applications are deployed by default on an embedded Reactor Netty server,
+War deployment is not supported for WebFlux applications.
+
 The first step in producing a deployable war file is to provide a
 `SpringBootServletInitializer` subclass and override its `configure` method. Doing so
 makes use of Spring Framework's Servlet 3.0 support and lets you configure your
@@ -2929,14 +3020,6 @@ TIP: Take a look at Spring Boot's sample applications for a
 {github-code}/spring-boot-samples/spring-boot-sample-traditional/pom.xml[Maven-based
 example] of the previously described configuration.
 
-
-
-[[howto-create-a-deployable-war-file-for-older-containers]]
-=== Create a Deployable War File for Older Servlet Containers
-Older Servlet containers do not have support for the `ServletContextInitializer` bootstrap
-process used in Servlet 3.0. You can still use Spring and Spring Boot in these containers,
-but you are going to need to add a `web.xml` to your application and configure it to load
-an `ApplicationContext` via a `DispatcherServlet`.
 
 
 
@@ -3102,70 +3185,6 @@ rather than the version that was pre-installed with the server. You can do so by
 		</wls:container-descriptor>
 	</wls:weblogic-web-app>
 ----
-
-
-
-[[howto-servlet-2-5]]
-===  Deploying a WAR in an Old (Servlet 2.5) Container
-Spring Boot uses Servlet 3.0 APIs to initialize the `ServletContext` (register `Servlets`
-and so on), so you cannot use the same application in a Servlet 2.5 container.
-It *is*, however, possible to run a Spring Boot application on an older container with some
-special tools. If you include `org.springframework.boot:spring-boot-legacy` as a
-dependency (https://github.com/scratches/spring-boot-legacy[maintained separately] to the
-core of Spring Boot and currently available at 1.1.0.RELEASE), all you need to do
-is create a `web.xml` and declare a context listener to create the application context and
-your filters and servlets. The context listener is a special purpose one for Spring Boot,
-but the rest of it is normal for a Spring application in Servlet 2.5. The following Maven
-example shows how to set up a Spring Boot project to run in a Servlet 2.5 container:
-
-[source,xml,indent=0]
-----
-	<?xml version="1.0" encoding="UTF-8"?>
-	<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
-
-		<context-param>
-			<param-name>contextConfigLocation</param-name>
-			<param-value>demo.Application</param-value>
-		</context-param>
-
-		<listener>
-			<listener-class>org.springframework.boot.legacy.context.web.SpringBootContextLoaderListener</listener-class>
-		</listener>
-
-		<filter>
-			<filter-name>metricsFilter</filter-name>
-			<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
-		</filter>
-
-		<filter-mapping>
-			<filter-name>metricsFilter</filter-name>
-			<url-pattern>/*</url-pattern>
-		</filter-mapping>
-
-		<servlet>
-			<servlet-name>appServlet</servlet-name>
-			<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-			<init-param>
-				<param-name>contextAttribute</param-name>
-				<param-value>org.springframework.web.context.WebApplicationContext.ROOT</param-value>
-			</init-param>
-			<load-on-startup>1</load-on-startup>
-		</servlet>
-
-		<servlet-mapping>
-			<servlet-name>appServlet</servlet-name>
-			<url-pattern>/</url-pattern>
-		</servlet-mapping>
-
-	</web-app>
-----
-
-In the preceding example, we use a single application context (the one created by the
-context listener) and attach it to the `DispatcherServlet` by using an `init` parameter.
-This is normal in a Spring Boot application (you normally only have one application
-context).
 
 
 

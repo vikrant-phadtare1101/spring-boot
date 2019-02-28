@@ -62,10 +62,10 @@ public class BindFailureAnalyzerTests {
 	@Test
 	public void bindExceptionDueToOtherFailure() {
 		FailureAnalysis analysis = performAnalysis(GenericFailureConfiguration.class,
-				"test.foo.value=${BAR}");
-		assertThat(analysis.getDescription()).contains(failure("test.foo.value", "${BAR}",
+				"test.foo.value=alpha");
+		assertThat(analysis.getDescription()).contains(failure("test.foo.value", "alpha",
 				"\"test.foo.value\" from property source \"test\"",
-				"Could not resolve placeholder 'BAR' in value \"${BAR}\""));
+				"failed to convert java.lang.String to int"));
 	}
 
 	@Test
@@ -75,6 +75,14 @@ public class BindFailureAnalyzerTests {
 		for (Fruit fruit : Fruit.values()) {
 			assertThat(analysis.getAction()).contains(fruit.name());
 		}
+	}
+
+	@Test
+	public void bindExceptionWithNestedFailureShouldDisplayNestedMessage() {
+		FailureAnalysis analysis = performAnalysis(NestedFailureConfiguration.class,
+				"test.foo.value=hello");
+		assertThat(analysis.getDescription()).contains(failure("test.foo.value", "hello",
+				"\"test.foo.value\" from property source \"test\"", "This is a failure"));
 	}
 
 	private static String failure(String property, String value, String origin,
@@ -139,6 +147,11 @@ public class BindFailureAnalyzerTests {
 
 	}
 
+	@EnableConfigurationProperties(NestedFailureProperties.class)
+	static class NestedFailureConfiguration {
+
+	}
+
 	@ConfigurationProperties("test.foo")
 	@Validated
 	static class FieldValidationFailureProperties {
@@ -168,18 +181,19 @@ public class BindFailureAnalyzerTests {
 		public void setListValue(List<String> listValue) {
 			this.listValue = listValue;
 		}
+
 	}
 
 	@ConfigurationProperties("test.foo")
 	static class GenericFailureProperties {
 
-		private String value;
+		private int value;
 
-		public String getValue() {
+		public int getValue() {
 			return this.value;
 		}
 
-		public void setValue(String value) {
+		public void setValue(int value) {
 			this.value = value;
 		}
 
@@ -200,9 +214,24 @@ public class BindFailureAnalyzerTests {
 
 	}
 
+	@ConfigurationProperties("test.foo")
+	static class NestedFailureProperties {
+
+		private String value;
+
+		public String getValue() {
+			return this.value;
+		}
+
+		public void setValue(String value) {
+			throw new RuntimeException("This is a failure");
+		}
+
+	}
+
 	enum Fruit {
 
-		APPLE, BANANA, ORANGE;
+		APPLE, BANANA, ORANGE
 
 	}
 

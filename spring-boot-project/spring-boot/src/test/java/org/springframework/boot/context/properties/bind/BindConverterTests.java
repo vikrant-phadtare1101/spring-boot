@@ -18,6 +18,7 @@ package org.springframework.boot.context.properties.bind;
 
 import java.beans.PropertyEditorSupport;
 import java.io.File;
+import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -45,6 +46,7 @@ import static org.mockito.Mockito.verify;
  * Tests for {@link BindConverter}.
  *
  * @author Phillip Webb
+ * @author Andy Wilkinson
  */
 public class BindConverterTests {
 
@@ -68,9 +70,7 @@ public class BindConverterTests {
 
 	@Test
 	public void createWhenPropertyEditorInitializerIsNullShouldCreate() {
-		BindConverter bindConverter = new BindConverter(
-				ApplicationConversionService.getSharedInstance(), null);
-		assertThat(bindConverter).isNotNull();
+		new BindConverter(ApplicationConversionService.getSharedInstance(), null);
 	}
 
 	@Test
@@ -140,7 +140,6 @@ public class BindConverterTests {
 		Class<?> converted = bindConverter.convert("java.lang.RuntimeException",
 				ResolvableType.forClass(Class.class));
 		assertThat(converted).isEqualTo(RuntimeException.class);
-
 	}
 
 	@Test
@@ -166,7 +165,7 @@ public class BindConverterTests {
 				this::registerSampleTypeEditor);
 		List<SampleType> converted = bindConverter.convert("test",
 				ResolvableType.forClassWithGenerics(List.class, SampleType.class));
-		assertThat(converted).isNotEmpty();
+		assertThat(converted).hasSize(1);
 		assertThat(converted.get(0).getText()).isEqualTo("test");
 	}
 
@@ -202,10 +201,17 @@ public class BindConverterTests {
 		// classpath resource reference. See gh-12163
 		BindConverter bindConverter = new BindConverter(new GenericConversionService(),
 				null);
-		assertThat(bindConverter.canConvert(".", ResolvableType.forClass(File.class)))
-				.isFalse();
-		this.thrown.expect(ConverterNotFoundException.class);
-		bindConverter.convert(".", ResolvableType.forClass(File.class));
+		File result = bindConverter.convert(".", ResolvableType.forClass(File.class));
+		assertThat(result.getPath()).isEqualTo(".");
+	}
+
+	@Test
+	public void fallsBackToApplicationConversionService() {
+		BindConverter bindConverter = new BindConverter(new GenericConversionService(),
+				null);
+		Duration result = bindConverter.convert("10s",
+				ResolvableType.forClass(Duration.class));
+		assertThat(result.getSeconds()).isEqualTo(10);
 	}
 
 	private BindConverter getPropertyEditorOnlyBindConverter(
