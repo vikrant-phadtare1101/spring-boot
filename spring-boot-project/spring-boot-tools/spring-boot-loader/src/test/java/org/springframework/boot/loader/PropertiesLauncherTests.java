@@ -34,7 +34,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
-import org.mockito.MockitoAnnotations;
 
 import org.springframework.boot.loader.archive.Archive;
 import org.springframework.boot.loader.archive.ExplodedArchive;
@@ -67,7 +66,6 @@ public class PropertiesLauncherTests {
 	@Before
 	public void setup() {
 		this.contextClassLoader = Thread.currentThread().getContextClassLoader();
-		MockitoAnnotations.initMocks(this);
 		System.setProperty("loader.home",
 				new File("src/test/resources").getAbsolutePath());
 	}
@@ -344,6 +342,17 @@ public class PropertiesLauncherTests {
 		System.setProperty("loader.home", "src/test/resources/placeholders");
 		PropertiesLauncher launcher = new PropertiesLauncher();
 		assertThat(launcher.getMainClass()).isEqualTo("demo.FooApplication");
+	}
+
+	@Test
+	public void encodedFileUrlLoaderPathIsHandledCorrectly() throws Exception {
+		File loaderPath = this.temporaryFolder.newFolder("loader path");
+		System.setProperty("loader.path", loaderPath.toURI().toURL().toString());
+		PropertiesLauncher launcher = new PropertiesLauncher();
+		List<Archive> archives = launcher.getClassPathArchives();
+		assertThat(archives.size()).isEqualTo(1);
+		File archiveRoot = (File) ReflectionTestUtils.getField(archives.get(0), "root");
+		assertThat(archiveRoot).isEqualTo(loaderPath);
 	}
 
 	private void waitFor(String value) throws Exception {

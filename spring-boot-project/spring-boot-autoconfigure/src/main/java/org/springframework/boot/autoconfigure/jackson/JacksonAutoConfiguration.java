@@ -27,7 +27,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
@@ -73,6 +75,7 @@ import org.springframework.util.ReflectionUtils;
  * @author Sebastien Deleuze
  * @author Johannes Edmeier
  * @author Phillip Webb
+ * @author Eddú Meléndez
  * @since 1.1.0
  */
 @Configuration
@@ -98,7 +101,7 @@ public class JacksonAutoConfiguration {
 
 		@Bean
 		@Primary
-		@ConditionalOnMissingBean(ObjectMapper.class)
+		@ConditionalOnMissingBean
 		public ObjectMapper jacksonObjectMapper(Jackson2ObjectMapperBuilder builder) {
 			return builder.createXmlMapper(false).build();
 		}
@@ -161,7 +164,7 @@ public class JacksonAutoConfiguration {
 	static class ParameterNamesModuleConfiguration {
 
 		@Bean
-		@ConditionalOnMissingBean(ParameterNamesModule.class)
+		@ConditionalOnMissingBean
 		public ParameterNamesModule parameterNamesModule() {
 			return new ParameterNamesModule(JsonCreator.Mode.DEFAULT);
 		}
@@ -179,7 +182,7 @@ public class JacksonAutoConfiguration {
 		}
 
 		@Bean
-		@ConditionalOnMissingBean(Jackson2ObjectMapperBuilder.class)
+		@ConditionalOnMissingBean
 		public Jackson2ObjectMapperBuilder jacksonObjectMapperBuilder(
 				List<Jackson2ObjectMapperBuilderCustomizer> customizers) {
 			Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
@@ -240,6 +243,7 @@ public class JacksonAutoConfiguration {
 					builder.timeZone(this.jacksonProperties.getTimeZone());
 				}
 				configureFeatures(builder, FEATURE_DEFAULTS);
+				configureVisibility(builder, this.jacksonProperties.getVisibility());
 				configureFeatures(builder, this.jacksonProperties.getDeserialization());
 				configureFeatures(builder, this.jacksonProperties.getSerialization());
 				configureFeatures(builder, this.jacksonProperties.getMapper());
@@ -263,6 +267,11 @@ public class JacksonAutoConfiguration {
 						}
 					}
 				});
+			}
+
+			private void configureVisibility(Jackson2ObjectMapperBuilder builder,
+					Map<PropertyAccessor, JsonAutoDetect.Visibility> accessors) {
+				accessors.forEach(builder::visibility);
 			}
 
 			private void configureDateFormat(Jackson2ObjectMapperBuilder builder) {
@@ -323,8 +332,8 @@ public class JacksonAutoConfiguration {
 				// that may be added by Jackson in the future)
 				Field field = ReflectionUtils.findField(PropertyNamingStrategy.class,
 						fieldName, PropertyNamingStrategy.class);
-				Assert.notNull(field, "Constant named '" + fieldName + "' not found on "
-						+ PropertyNamingStrategy.class.getName());
+				Assert.notNull(field, () -> "Constant named '" + fieldName
+						+ "' not found on " + PropertyNamingStrategy.class.getName());
 				try {
 					builder.propertyNamingStrategy(
 							(PropertyNamingStrategy) field.get(null));

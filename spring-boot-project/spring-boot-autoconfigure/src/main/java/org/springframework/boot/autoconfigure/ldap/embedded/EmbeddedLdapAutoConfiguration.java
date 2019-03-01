@@ -58,7 +58,6 @@ import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.type.AnnotatedTypeMetadata;
-import org.springframework.ldap.core.ContextSource;
 import org.springframework.ldap.core.support.LdapContextSource;
 import org.springframework.util.StringUtils;
 
@@ -101,7 +100,7 @@ public class EmbeddedLdapAutoConfiguration {
 	@Bean
 	@DependsOn("directoryServer")
 	@ConditionalOnMissingBean
-	public ContextSource ldapContextSource() {
+	public LdapContextSource ldapContextSource() {
 		LdapContextSource source = new LdapContextSource();
 		if (hasCredentials(this.embeddedProperties.getCredential())) {
 			source.setUserDn(this.embeddedProperties.getCredential().getUsername());
@@ -218,12 +217,10 @@ public class EmbeddedLdapAutoConfiguration {
 				AnnotatedTypeMetadata metadata) {
 			Builder message = ConditionMessage.forCondition("Embedded LDAP");
 			Environment environment = context.getEnvironment();
-			if (environment != null
-					&& !Binder.get(environment)
-						.bind("spring.ldap.embedded.base-dn", STRING_LIST)
-						.orElseGet(Collections::emptyList).isEmpty()) {
-				return ConditionOutcome
-						.match(message.because("Found base-dn property"));
+			if (environment != null && !Binder.get(environment)
+					.bind("spring.ldap.embedded.base-dn", STRING_LIST)
+					.orElseGet(Collections::emptyList).isEmpty()) {
+				return ConditionOutcome.match(message.because("Found base-dn property"));
 			}
 			return ConditionOutcome.noMatch(message.because("No base-dn property found"));
 		}

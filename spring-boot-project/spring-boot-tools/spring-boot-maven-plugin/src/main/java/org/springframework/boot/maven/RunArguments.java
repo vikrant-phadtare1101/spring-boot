@@ -17,6 +17,7 @@
 package org.springframework.boot.maven;
 
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Objects;
 
@@ -32,7 +33,7 @@ class RunArguments {
 
 	private static final String[] NO_ARGS = {};
 
-	private final LinkedList<String> args = new LinkedList<>();
+	private final Deque<String> args = new LinkedList<>();
 
 	RunArguments(String arguments) {
 		this(parseArgs(arguments));
@@ -44,7 +45,7 @@ class RunArguments {
 		}
 	}
 
-	public LinkedList<String> getArgs() {
+	public Deque<String> getArgs() {
 		return this.args;
 	}
 

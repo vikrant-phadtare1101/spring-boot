@@ -261,7 +261,6 @@ public class MapBinderTests {
 				.withExistingValue(existing);
 		Map<String, Integer> result = this.binder.bind("foo", target).get();
 		assertThat(result).isExactlyInstanceOf(HashMap.class);
-		assertThat(result).isSameAs(existing);
 		assertThat(result).hasSize(2);
 		assertThat(result).containsEntry("bar", 1);
 		assertThat(result).containsEntry("baz", 1001);
@@ -595,6 +594,53 @@ public class MapBinderTests {
 		assertThat(map).containsExactly(entry("bar", RuntimeException.class));
 	}
 
+	@Test
+	public void bindToMapWithNoDefaultConstructor() {
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo.items.a", "b");
+		this.sources.add(source);
+		ExampleCustomNoDefaultConstructorBean result = this.binder
+				.bind("foo", ExampleCustomNoDefaultConstructorBean.class).get();
+		assertThat(result.getItems()).containsOnly(entry("foo", "bar"), entry("a", "b"));
+	}
+
+	@Test
+	public void bindToMapWithDefaultConstructor() {
+		// gh-12322
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo.items.a", "b");
+		this.sources.add(source);
+		ExampleCustomWithDefaultConstructorBean result = this.binder
+				.bind("foo", ExampleCustomWithDefaultConstructorBean.class).get();
+		assertThat(result.getItems()).containsExactly(entry("a", "b"));
+	}
+
+	@Test
+	public void bindToImmutableMapShouldReturnPopulatedCollection() {
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo.values.c", "d");
+		source.put("foo.values.e", "f");
+		this.sources.add(source);
+		Map<String, String> result = this.binder
+				.bind("foo.values",
+						STRING_STRING_MAP
+								.withExistingValue(Collections.singletonMap("a", "b")))
+				.get();
+		assertThat(result).hasSize(3);
+		assertThat(result.entrySet()).containsExactly(entry("a", "b"), entry("c", "d"),
+				entry("e", "f"));
+	}
+
+	@Test
+	public void bindToBeanWithExceptionInGetterForExistingValue() {
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo.values.a", "b");
+		this.sources.add(source);
+		BeanWithGetterException result = this.binder
+				.bind("foo", Bindable.of(BeanWithGetterException.class)).get();
+		assertThat(result.getValues()).containsExactly(entry("a", "b"));
+	}
+
 	private <K, V> Bindable<Map<K, V>> getMapBindable(Class<K> keyGeneric,
 			ResolvableType valueType) {
 		ResolvableType keyType = ResolvableType.forClass(keyGeneric);
@@ -653,6 +699,63 @@ public class MapBinderTests {
 		public Map<String, String> convert(String s) {
 			return StringUtils.commaDelimitedListToSet(s).stream()
 					.collect(Collectors.toMap((k) -> k, (k) -> ""));
+		}
+
+	}
+
+	public static class ExampleCustomNoDefaultConstructorBean {
+
+		private MyCustomNoDefaultConstructorMap items = new MyCustomNoDefaultConstructorMap(
+				Collections.singletonMap("foo", "bar"));
+
+		public MyCustomNoDefaultConstructorMap getItems() {
+			return this.items;
+		}
+
+		public void setItems(MyCustomNoDefaultConstructorMap items) {
+			this.items = items;
+		}
+
+	}
+
+	public static class MyCustomNoDefaultConstructorMap extends HashMap<String, String> {
+
+		public MyCustomNoDefaultConstructorMap(Map<String, String> items) {
+			putAll(items);
+		}
+
+	}
+
+	public static class ExampleCustomWithDefaultConstructorBean {
+
+		private MyCustomWithDefaultConstructorMap items = new MyCustomWithDefaultConstructorMap();
+
+		public MyCustomWithDefaultConstructorMap getItems() {
+			return this.items;
+		}
+
+		public void setItems(MyCustomWithDefaultConstructorMap items) {
+			this.items.clear();
+			this.items.putAll(items);
+		}
+
+	}
+
+	public static class MyCustomWithDefaultConstructorMap
+			extends HashMap<String, String> {
+
+	}
+
+	public static class BeanWithGetterException {
+
+		private Map<String, String> values;
+
+		public void setValues(Map<String, String> values) {
+			this.values = values;
+		}
+
+		public Map<String, String> getValues() {
+			return Collections.unmodifiableMap(this.values);
 		}
 
 	}

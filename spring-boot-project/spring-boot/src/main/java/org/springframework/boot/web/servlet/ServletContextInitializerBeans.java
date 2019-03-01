@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.servlet.Filter;
 import javax.servlet.MultipartConfigElement;
@@ -78,12 +79,11 @@ public class ServletContextInitializerBeans
 		this.initializers = new LinkedMultiValueMap<>();
 		addServletContextInitializerBeans(beanFactory);
 		addAdaptableBeans(beanFactory);
-		List<ServletContextInitializer> sortedInitializers = new ArrayList<>();
-		for (Map.Entry<?, List<ServletContextInitializer>> entry : this.initializers
-				.entrySet()) {
-			AnnotationAwareOrderComparator.sort(entry.getValue());
-			sortedInitializers.addAll(entry.getValue());
-		}
+		List<ServletContextInitializer> sortedInitializers = this.initializers.values()
+				.stream()
+				.flatMap((value) -> value.stream()
+						.sorted(AnnotationAwareOrderComparator.INSTANCE))
+				.collect(Collectors.toList());
 		this.sortedList = Collections.unmodifiableList(sortedInitializers);
 	}
 
@@ -271,7 +271,7 @@ public class ServletContextInitializerBeans
 		@Override
 		public RegistrationBean createRegistrationBean(String name, Servlet source,
 				int totalNumberOfSourceBeans) {
-			String url = (totalNumberOfSourceBeans == 1 ? "/" : "/" + name + "/");
+			String url = (totalNumberOfSourceBeans != 1 ? "/" + name + "/" : "/");
 			if (name.equals(DISPATCHER_SERVLET_NAME)) {
 				url = "/"; // always map the main dispatcherServlet to "/"
 			}

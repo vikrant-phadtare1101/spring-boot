@@ -34,12 +34,6 @@
       "defaultValue": "never"
     },
     {
-      "name": "server.error.whitelabel.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether to enable the default error page displayed in browsers in case of a server error.",
-      "defaultValue": true
-    },
-    {
       "name": "server.port",
       "defaultValue": 8080
     },
@@ -214,6 +208,12 @@
     },
     {
       "name": "spring.elasticsearch.jest.uris",
+      "defaultValue": [
+        "http://localhost:9200"
+      ]
+    },
+    {
+      "name": "spring.elasticsearch.rest.uris",
       "defaultValue": [
         "http://localhost:9200"
       ]
@@ -410,6 +410,13 @@
       "defaultValue": "single"
     },
     {
+      "name": "spring.mail.test-connection",
+      "description": "Whether to test that the mail server is available on startup.",
+      "sourceType": "org.springframework.boot.autoconfigure.mail.MailProperties",
+      "type": "java.lang.Boolean",
+      "defaultValue": false
+    },
+    {
       "name": "spring.mongodb.embedded.features",
       "defaultValue": [
         "sync_delay"
@@ -447,6 +454,15 @@
     {
       "name": "spring.mvc.locale-resolver",
       "defaultValue": "accept-header"
+    },
+    {
+      "name" : "spring.resources.chain.gzipped",
+      "type" : "java.lang.Boolean",
+      "description" : "Whether to enable resolution of already gzipped resources. Checks for a resource name variant with the \"*.gz\" extension.",
+      "deprecation" : {
+        "replacement" : "spring.resources.chain.compressed",
+        "level" : "error"
+      }
     },
     {
       "name": "spring.quartz.jdbc.initialize-schema",
@@ -1069,7 +1085,17 @@
       "description": "Path of the main dispatcher servlet.",
       "defaultValue": "/",
       "deprecation": {
-        "replacement": "server.servlet.path",
+        "replacement": "spring.mvc.servlet.path",
+        "level": "error"
+      }
+    },
+    {
+      "name": "server.servlet.path",
+      "type": "java.lang.String",
+      "description": "Path of the main dispatcher servlet.",
+      "defaultValue": "/",
+      "deprecation": {
+        "replacement": "spring.mvc.servlet.path",
         "level": "error"
       }
     },
@@ -1216,6 +1242,13 @@
       }
     },
     {
+      "name": "spring.flyway.locations",
+      "type": "java.util.List<java.lang.String>",
+      "defaultValue": [
+        "classpath:db/migration"
+      ]
+    },
+    {
       "name": "spring.flyway.sql-migration-suffix",
       "deprecation": {
         "replacement": "spring.flyway.sql-migration-suffixes",
@@ -1296,6 +1329,150 @@
       "description": "Hibernate 4 naming strategy fully qualified name. Not supported with Hibernate\n 5.",
       "deprecation": {
         "reason": "Auto-configuration for Hibernate 4 is no longer provided.",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.admin.ssl.keystore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.admin.ssl.key-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.admin.ssl.keystore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.admin.ssl.key-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.admin.ssl.truststore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.admin.ssl.trust-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.admin.ssl.truststore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.admin.ssl.trust-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.consumer.ssl.keystore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.consumer.ssl.key-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.consumer.ssl.keystore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.consumer.ssl.key-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.consumer.ssl.truststore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.consumer.ssl.trust-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.consumer.ssl.truststore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.consumer.ssl.trust-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.producer.ssl.keystore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.producer.ssl.key-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.producer.ssl.keystore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.producer.ssl.key-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.producer.ssl.truststore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.producer.ssl.trust-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.producer.ssl.truststore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.producer.ssl.trust-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.ssl.keystore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.ssl.key-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.ssl.keystore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the key store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.ssl.key-store-password",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.ssl.truststore-location",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Location of the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.ssl.trust-store-location",
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.kafka.ssl.truststore-password",
+      "type": "java.lang.String",
+      "description": "Store password for the trust store file.",
+      "deprecation": {
+        "replacement": "spring.kafka.ssl.trust-store-password",
         "level": "error"
       }
     },
